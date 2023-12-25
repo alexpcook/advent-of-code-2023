@@ -1,213 +1,72 @@
-use std::{cmp::Ordering, collections::HashMap, fs};
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Card {
-    Joker = 1,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-    Ten,
-    Jack,
-    Queen,
-    King,
-    Ace,
-}
-
-impl From<char> for Card {
-    fn from(value: char) -> Self {
-        use Card::*;
-        match value {
-            '2' => Two,
-            '3' => Three,
-            '4' => Four,
-            '5' => Five,
-            '6' => Six,
-            '7' => Seven,
-            '8' => Eight,
-            '9' => Nine,
-            'T' => Ten,
-            'J' => Joker,
-            'Q' => Queen,
-            'K' => King,
-            'A' => Ace,
-            _ => panic!("failed to conver char `{value}` to Card"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct Hand {
-    cards: [Card; 5],
-}
-
-impl<T> From<T> for Hand
-where
-    T: Into<String>,
-{
-    fn from(value: T) -> Self {
-        let s = value.into();
-        let mut chars = s.chars();
-
-        Hand {
-            cards: [
-                Card::from(chars.next().unwrap()),
-                Card::from(chars.next().unwrap()),
-                Card::from(chars.next().unwrap()),
-                Card::from(chars.next().unwrap()),
-                Card::from(chars.next().unwrap()),
-            ],
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum HandType {
-    HighCard,
-    OnePair,
-    TwoPair,
-    ThreeOfAKind,
-    FullHouse,
-    FourOfAKind,
-    FiveOfAKind,
-}
-
-impl Hand {
-    fn hand_type(&self) -> HandType {
-        use HandType::*;
-
-        let mut card_map: HashMap<Card, u32> = HashMap::with_capacity(5);
-
-        for card in self.cards {
-            card_map
-                .entry(card)
-                .and_modify(|count| *count += 1)
-                .or_insert(1);
-        }
-
-        match card_map.len() {
-            1 => FiveOfAKind,
-            2 => {
-                // full house or four of a kind
-                let count = *card_map.values().next().unwrap();
-
-                if count == 1 || count == 4 {
-                    FourOfAKind
-                } else {
-                    FullHouse
-                }
-            }
-            3 => {
-                // two pair or three of a kind
-                let mut iter = card_map.values();
-
-                let (count1, count2) = (*iter.next().unwrap(), *iter.next().unwrap());
-
-                if count1 == 3 {
-                    ThreeOfAKind
-                } else if count1 == 2 {
-                    TwoPair
-                } else if count2 == 3 {
-                    ThreeOfAKind
-                } else if count2 == 2 {
-                    TwoPair
-                } else {
-                    ThreeOfAKind
-                }
-            }
-            4 => OnePair,
-            5 => HighCard,
-            n => panic!("got unexpected card count {n} in hand {self:?}"),
-        }
-    }
-
-    fn hand_type_with_jokers(&self) -> HandType {
-        use HandType::*;
-
-        let hand_type = self.hand_type();
-
-        let num_jokers = self.cards.iter().filter(|&&c| c == Card::Joker).count();
-
-        if num_jokers == 0 {
-            hand_type
-        } else if num_jokers > 3 {
-            FiveOfAKind
-        } else if num_jokers == 3 {
-            if hand_type == FullHouse {
-                FiveOfAKind
-            } else {
-                // three of a kind
-                FourOfAKind
-            }
-        } else if num_jokers == 2 {
-            if hand_type == FullHouse {
-                FiveOfAKind
-            } else if hand_type == TwoPair {
-                FourOfAKind
-            } else {
-                // one pair
-                ThreeOfAKind
-            }
-        } else {
-            if hand_type == FourOfAKind {
-                FiveOfAKind
-            } else if hand_type == ThreeOfAKind {
-                FourOfAKind
-            } else if hand_type == TwoPair {
-                FullHouse
-            } else if hand_type == OnePair {
-                ThreeOfAKind
-            } else {
-                OnePair
-            }
-        }
-    }
-}
-
-impl PartialOrd for Hand {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Hand {
-    fn cmp(&self, other: &Self) -> Ordering {
-        let self_hand_type = self.hand_type_with_jokers();
-        let other_hand_type = other.hand_type_with_jokers();
-
-        match self_hand_type.cmp(&other_hand_type) {
-            Ordering::Equal => self.cards.cmp(&other.cards),
-            ord => ord,
-        }
-    }
-}
+use std::{collections::HashMap, fs};
 
 fn main() {
-    let input = fs::read_to_string("input/day7.txt").unwrap();
+    let input = fs::read_to_string("input/day8.txt").unwrap();
 
-    let mut hands: Vec<_> = input
+    let (directions, nodes) = input.split_once("\n\n").unwrap();
+
+    let nodes: HashMap<_, _> = nodes
         .lines()
-        .map(|s| {
-            let mut split = s.split_whitespace();
-            (
-                Hand::from(split.next().unwrap()),
-                split.next().unwrap().parse::<u32>().unwrap(),
-            )
+        .map(|line| {
+            let node = line.get(0..3).unwrap();
+            let left = line.get(7..10).unwrap();
+            let right = line.get(12..15).unwrap();
+
+            (node, (left, right))
         })
         .collect();
 
-    hands.sort_unstable_by(|(hand1, _), (hand2, _)| hand1.cmp(hand2));
+    let mut node = nodes.get(&"AAA").unwrap();
+    let mut steps = 0;
 
-    let winnings = hands
-        .into_iter()
-        .enumerate()
-        .fold(0, |result, (i, (_, bid))| {
-            result + (u32::try_from(i).unwrap() + 1) * bid
-        });
+    let mut starting_nodes: Vec<_> = nodes
+        .keys()
+        .filter_map(|&k| {
+            if k.ends_with('A') {
+                Some(nodes.get(k).unwrap())
+            } else {
+                None
+            }
+        })
+        .collect();
+    println!("{starting_nodes:?}");
 
-    println!("day 7, part 1: {winnings}");
+    for direction in directions.chars().cycle() {
+        steps += 1;
+
+        let next = if direction == 'L' { node.0 } else { node.1 };
+
+        if next == "ZZZ" {
+            break;
+        }
+
+        node = nodes.get(next).unwrap();
+    }
+
+    println!("day 8, part 1: {steps}");
+
+    steps = 0;
+
+    for direction in directions.chars().cycle() {
+        steps += 1;
+        let mut nexts = Vec::with_capacity(starting_nodes.len());
+
+        for node in starting_nodes.iter_mut() {
+            let next = if direction == 'L' { node.0 } else { node.1 };
+            nexts.push(next);
+            *node = nodes.get(next).unwrap()
+        }
+
+        for (i, next) in nexts.into_iter().enumerate() {
+            if next.ends_with('Z') {
+                println!("{i} = {steps}");
+            }
+        }
+
+        if steps > 1_000_000 {
+            return;
+        }
+    }
+
+    println!("day 8, part 2: {steps}");
 }
