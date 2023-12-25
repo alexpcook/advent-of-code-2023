@@ -1,72 +1,59 @@
-use std::{collections::HashMap, fs};
+use std::fs;
+
+fn differences(v: &Vec<i32>) -> Vec<Vec<i32>> {
+    let n = v.len().saturating_sub(1);
+
+    let mut diffs = Vec::with_capacity(n);
+
+    for i in 0..n {
+        let current = v.get(i).unwrap();
+        let next = v.get(i + 1).unwrap();
+        diffs.push(next - current);
+    }
+
+    let mut result = vec![diffs.clone()];
+
+    if diffs.iter().any(|&i| i != 0) {
+        for d in differences(&diffs) {
+            result.push(d);
+        }
+    }
+
+    result
+}
 
 fn main() {
-    let input = fs::read_to_string("input/day8.txt").unwrap();
+    let input = fs::read_to_string("input/day9.txt").unwrap();
 
-    let (directions, nodes) = input.split_once("\n\n").unwrap();
+    let mut sum = 0;
 
-    let nodes: HashMap<_, _> = nodes
+    let histories: Vec<Vec<_>> = input
         .lines()
         .map(|line| {
-            let node = line.get(0..3).unwrap();
-            let left = line.get(7..10).unwrap();
-            let right = line.get(12..15).unwrap();
-
-            (node, (left, right))
+            line.split_whitespace()
+                .map(|s| s.parse::<i32>().unwrap())
+                .collect()
         })
         .collect();
 
-    let mut node = nodes.get(&"AAA").unwrap();
-    let mut steps = 0;
+    for history in histories {
+        let differences = differences(&history);
 
-    let mut starting_nodes: Vec<_> = nodes
-        .keys()
-        .filter_map(|&k| {
-            if k.ends_with('A') {
-                Some(nodes.get(k).unwrap())
-            } else {
-                None
-            }
-        })
-        .collect();
-    println!("{starting_nodes:?}");
+        let firsts: Vec<_> = differences
+            .into_iter()
+            .map(|diffs| diffs.into_iter().nth(0).unwrap())
+            .rev()
+            .collect();
 
-    for direction in directions.chars().cycle() {
-        steps += 1;
+        println!("{firsts:?}");
 
-        let next = if direction == 'L' { node.0 } else { node.1 };
+        let first = history.first().unwrap();
+        let step = firsts.into_iter().reduce(|acc, x| x - acc).unwrap();
 
-        if next == "ZZZ" {
-            break;
-        }
+        sum += first - step;
 
-        node = nodes.get(next).unwrap();
+        println!("sum={sum} first={first} step={step}");
     }
 
-    println!("day 8, part 1: {steps}");
-
-    steps = 0;
-
-    for direction in directions.chars().cycle() {
-        steps += 1;
-        let mut nexts = Vec::with_capacity(starting_nodes.len());
-
-        for node in starting_nodes.iter_mut() {
-            let next = if direction == 'L' { node.0 } else { node.1 };
-            nexts.push(next);
-            *node = nodes.get(next).unwrap()
-        }
-
-        for (i, next) in nexts.into_iter().enumerate() {
-            if next.ends_with('Z') {
-                println!("{i} = {steps}");
-            }
-        }
-
-        if steps > 1_000_000 {
-            return;
-        }
-    }
-
-    println!("day 8, part 2: {steps}");
+    println!("day 9, part 1: {sum}");
 }
