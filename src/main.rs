@@ -81,6 +81,10 @@ fn is_in_loop((x, y): (usize, usize), loop_squares: &HashSet<(usize, usize)>) ->
     loop_squares.contains(&(x, y))
 }
 
+fn is_edge_square((x, y): (usize, usize), pipes: &Vec<Vec<char>>) -> bool {
+    x == 0 || y == 0 || x == pipes.get(y).unwrap().len() - 1 || y == pipes.len() - 1
+}
+
 fn get_area(
     (x, y): (usize, usize),
     pipes: &Vec<Vec<char>>,
@@ -155,6 +159,16 @@ fn main() {
         }
     }
 
-    println!("got {} areas", areas.len());
-    println!("{areas:?}");
+    let inside = areas.into_iter().fold(0, |inside, area| {
+        if area
+            .iter()
+            .any(|&position| is_edge_square(position, &pipes))
+        {
+            inside
+        } else {
+            area.len() + inside
+        }
+    });
+
+    println!("day 10, part 2: {inside}");
 }
