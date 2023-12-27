@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fs};
 
-fn s_position(pipes: &Vec<Vec<char>>) -> (usize, usize) {
+fn s_position(pipes: &[Vec<char>]) -> (usize, usize) {
     let mut s_position = None;
 
     'OUTER: for (y, row) in pipes.iter().enumerate() {
@@ -15,7 +15,7 @@ fn s_position(pipes: &Vec<Vec<char>>) -> (usize, usize) {
     s_position.unwrap()
 }
 
-fn get_char((x, y): (usize, usize), pipes: &Vec<Vec<char>>) -> char {
+fn get_char((x, y): (usize, usize), pipes: &[Vec<char>]) -> char {
     *pipes.get(y).unwrap().get(x).unwrap()
 }
 
@@ -81,8 +81,12 @@ fn is_in_loop((x, y): (usize, usize), loop_squares: &HashSet<(usize, usize)>) ->
     loop_squares.contains(&(x, y))
 }
 
-fn is_edge_square((x, y): (usize, usize), pipes: &Vec<Vec<char>>) -> bool {
-    x == 0 || y == 0 || x == pipes.get(y).unwrap().len() - 1 || y == pipes.len() - 1
+fn has_path_to_edge((x, y): (usize, usize), pipes: &Vec<Vec<char>>) -> bool {
+    if x == 0 || y == 0 || x == pipes.get(y).unwrap().len() - 1 || y == pipes.len() - 1 {
+        true
+    } else {
+        false
+    }
 }
 
 fn get_area(
@@ -162,7 +166,7 @@ fn main() {
     let inside = areas.into_iter().fold(0, |inside, area| {
         if area
             .iter()
-            .any(|&position| is_edge_square(position, &pipes))
+            .any(|&position| has_path_to_edge(position, &pipes))
         {
             inside
         } else {
