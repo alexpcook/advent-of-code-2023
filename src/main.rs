@@ -77,6 +77,50 @@ fn next_square(
     None
 }
 
+fn is_in_loop((x, y): (usize, usize), loop_squares: &HashSet<(usize, usize)>) -> bool {
+    loop_squares.contains(&(x, y))
+}
+
+fn get_area(
+    (x, y): (usize, usize),
+    pipes: &Vec<Vec<char>>,
+    loop_squares: &HashSet<(usize, usize)>,
+    traversed: &mut HashSet<(usize, usize)>,
+) -> HashSet<(usize, usize)> {
+    traversed.insert((x, y));
+
+    let mut result = HashSet::new();
+    result.insert((x, y));
+
+    if x > 0 && !loop_squares.contains(&(x - 1, y)) && !traversed.contains(&(x - 1, y)) {
+        result.insert((x - 1, y));
+        result.extend(get_area((x - 1, y), pipes, loop_squares, traversed));
+    }
+
+    if x < pipes.get(0).unwrap().len() - 1
+        && !loop_squares.contains(&(x + 1, y))
+        && !traversed.contains(&(x + 1, y))
+    {
+        result.insert((x + 1, y));
+        result.extend(get_area((x + 1, y), pipes, loop_squares, traversed));
+    }
+
+    if y > 0 && !loop_squares.contains(&(x, y - 1)) && !traversed.contains(&(x, y - 1)) {
+        result.insert((x, y - 1));
+        result.extend(get_area((x, y - 1), pipes, loop_squares, traversed));
+    }
+
+    if y < pipes.len() - 1
+        && !loop_squares.contains(&(x, y + 1))
+        && !traversed.contains(&(x, y + 1))
+    {
+        result.insert((x, y + 1));
+        result.extend(get_area((x, y + 1), pipes, loop_squares, traversed));
+    }
+
+    result
+}
+
 fn main() {
     let input = fs::read_to_string("input/day10.txt").unwrap();
 
@@ -98,4 +142,19 @@ fn main() {
     };
 
     println!("day 10, part 1: {steps}");
+
+    let mut areas = vec![];
+    let mut counted: HashSet<(usize, usize)> =
+        HashSet::with_capacity(pipes.len() * pipes.get(0).unwrap().len() - visited.len());
+
+    for (y, row) in pipes.iter().enumerate() {
+        for (x, _) in row.iter().enumerate() {
+            if !is_in_loop((x, y), &visited) && !counted.contains(&(x, y)) {
+                areas.push(get_area((x, y), &pipes, &visited, &mut counted));
+            }
+        }
+    }
+
+    println!("got {} areas", areas.len());
+    println!("{areas:?}");
 }
